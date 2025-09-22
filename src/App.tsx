@@ -1,5 +1,5 @@
 import './App.css'
-import PivotExcel from './components/PivotExcel'
+import { PivotExcel } from './components/PivotExcel'
 
 function App() {
 
