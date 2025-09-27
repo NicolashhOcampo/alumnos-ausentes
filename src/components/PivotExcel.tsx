@@ -1,5 +1,7 @@
 import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { DropDown } from "./DropDown";
+import { toast } from "react-toastify";
 
 interface FilaAlumno {
     Legajo: number;
@@ -29,7 +31,7 @@ export const PivotExcel = () => {
     const [dias, setDias] = useState<string[]>([]);
     const [dragOver, setDragOver] = useState(false);
 
-    // 🔑 Normalizar columnas
+    // Normalizar columnas
     const normalizeKeys = (row: any): any => {
         const normalizedRow: any = {};
         Object.keys(row).forEach((key) => {
@@ -174,6 +176,8 @@ export const PivotExcel = () => {
                 setTablaPresentes(presentesTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
                 setTablaAlumnosNoEncontrados(noEncontradosTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
                 setTablaAusentes(ausentesTabla.filter(fila => Object.values(fila).some(val => val !== "")));
+
+                toast.success("Reporte generado correctamente");
             };
 
             readerAsistencias.readAsArrayBuffer(asistenciasFile);
@@ -339,109 +343,98 @@ export const PivotExcel = () => {
                 </div>
             </div>
 
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 gap-2">
                 <button onClick={handleGenerateReport} className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={!archivoAsistencia || !archivoAlumnos}>Generar Reporte</button>
             </div>
 
             <section className="mt-8 flex flex-col items-center gap-2">
-
-                {
-                    tablaAusentes.length > 0 && (
-                        <>
-                            <h2>Alumnos Ausentes</h2>
-                            <div className="overflow-x-auto flex items-center justify-center">
-                                <table className="mt-1 border-collapse border border-gray-400">
-                                    <thead>
-                                        <tr>
+                <DropDown title="Alumnos Ausentes">
+                    {
+                        tablaAusentes.length > 0 && (
+                            <table className="m-auto mt-1 border-collapse border border-gray-400">
+                                <thead>
+                                    <tr>
+                                        {dias.map((dia) => (
+                                            <th key={dia} className="border border-gray-400 px-10 py-1">
+                                                {dia}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tablaAusentes.map((fila, idx) => (
+                                        <tr key={idx}>
                                             {dias.map((dia) => (
-                                                <th key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {dia}
-                                                </th>
+                                                <td key={dia} className="border border-gray-400 px-2 py-1">
+                                                    {fila[dia]}
+                                                </td>
                                             ))}
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {tablaAusentes.map((fila, idx) => (
-                                            <tr key={idx}>
-                                                {dias.map((dia) => (
-                                                    <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                        {fila[dia]}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                    )
-                }
+                                    ))}
+                                </tbody>
+                            </table>
 
-                {
-                    tablaPresentes.length > 0 && (
-                        <>
-                            <h2>Alumnos Presentes</h2>
-                            <div className="overflow-x-auto flex items-center justify-center">
-                                <table className="mt-1 border-collapse border border-gray-400">
-                                    <thead>
-                                        <tr>
+                        )
+                    }
+                </DropDown>
+
+                <DropDown title="Alumnos Presentes">
+                    {
+                        tablaPresentes.length > 0 && (
+                            <table className="m-auto mt-1 border-collapse border border-gray-400">
+                                <thead>
+                                    <tr>
+                                        {dias.map((dia) => (
+                                            <th key={dia} className="border border-gray-400 px-10 py-1">
+                                                {dia}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tablaPresentes.map((fila, idx) => (
+                                        <tr key={idx}>
                                             {dias.map((dia) => (
-                                                <th key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {dia}
-                                                </th>
+                                                <td key={dia} className="border border-gray-400 px-2 py-1">
+                                                    {fila[dia]}
+                                                </td>
                                             ))}
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {tablaPresentes.map((fila, idx) => (
-                                            <tr key={idx}>
-                                                {dias.map((dia) => (
-                                                    <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                        {fila[dia]}
-                                                    </td>
-                                                ))}
-                                            </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )
+                    }
+                </DropDown>
+
+                <DropDown title="Legajos no encontrados en la lista de alumnos">
+                    {
+                        tablaAlumnosNoEncontrados.length > 0 && (
+                            <table className="m-auto mt-1 border-collapse border border-gray-400">
+                                <thead>
+                                    <tr>
+                                        {dias.map((dia) => (
+                                            <th key={dia} className="border border-gray-400 px-10 py-1">
+                                                {dia}
+                                            </th>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                        </>
-                    )
-                }
-
-                {
-                    tablaAlumnosNoEncontrados.length > 0 && (
-                        <>
-                            <h2>Legajos No Encontrados</h2>
-                            <div className="overflow-x-auto flex items-center justify-center">
-                                <table className="mt-1 border-collapse border border-gray-400">
-                                    <thead>
-                                        <tr>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tablaAlumnosNoEncontrados.map((fila, idx) => (
+                                        <tr key={idx}>
                                             {dias.map((dia) => (
-                                                <th key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {dia}
-                                                </th>
+                                                <td key={dia} className="border border-gray-400 px-2 py-1">
+                                                    {fila[dia]}
+                                                </td>
                                             ))}
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {tablaAlumnosNoEncontrados.map((fila, idx) => (
-                                            <tr key={idx}>
-                                                {dias.map((dia) => (
-                                                    <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                        {fila[dia]}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                        </>
-                    )
-                }
+                                    ))}
+                                </tbody>
+                            </table>
+                        )
+                    }
+                </DropDown>
             </section>
 
         </div >
