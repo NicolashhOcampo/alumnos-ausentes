@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { DropDown } from "./DropDown";
+import { toast } from "react-toastify";
 
 interface FilaAlumno {
     Legajo: number;
@@ -175,6 +176,8 @@ export const PivotExcel = () => {
                 setTablaPresentes(presentesTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
                 setTablaAlumnosNoEncontrados(noEncontradosTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
                 setTablaAusentes(ausentesTabla.filter(fila => Object.values(fila).some(val => val !== "")));
+
+                toast.success("Reporte generado correctamente");
             };
 
             readerAsistencias.readAsArrayBuffer(asistenciasFile);
