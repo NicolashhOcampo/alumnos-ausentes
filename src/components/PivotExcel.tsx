@@ -2,23 +2,9 @@ import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { DropDown } from "./DropDown";
 import { toast } from "react-toastify";
-
-interface FilaAlumno {
-    Legajo: number;
-    "Apellido y Nombre": string;
-}
-
-interface FilaAsistencia {
-    "Marca temporal": number;
-    "Dia": string;
-    "Apellido y Nombre": string;
-    Legajo: number;
-}
-
-interface FilaTabla {
-    [key: string]: string;
-}
-
+import type { FilaTabla } from "../types/table";
+import type { FilaAlumno, FilaAsistencia } from "../types/excelRows";
+import { Table } from "./Table";
 
 export const PivotExcel = () => {
     const inputAsistenciaRef = useRef<HTMLInputElement | null>(null);
@@ -236,10 +222,10 @@ export const PivotExcel = () => {
     }
 
     return (
-        <div className="p-4">
-            <div className="flex justify-center gap-2">
+        <div className="w-full max-w-7xl m-auto p-4">
+            <div className="flex justify-center md:gap-2 md:flex-row flex-col gap-8">
                 <div className="flex-1">
-                    <h2 className="text-xl font-bold mb-4">Subir Excel de Asistencias</h2>
+                    <h2 className="text-xl text-center font-bold mb-4">Subir Excel de Asistencias</h2>
                     <div
                         className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer ${dragOver ? "bg-blue-100 border-blue-400" : "border-gray-400"}`}
                         onDragOver={(e) => {
@@ -262,7 +248,7 @@ export const PivotExcel = () => {
                         />
                     </div>
                     {archivoAsistencia && <p className="mt-2 text-green-600">Archivo seleccionado: {archivoAsistencia.name}</p>}
-                    <p className="mt-2 text-gray-600">Formato esperado:</p>
+                    <p className="mt-2 text-gray-600 text-center">Formato esperado:</p>
                     <table className="m-auto mt-1 border-collapse border border-gray-400">
                         <thead>
                             <tr>
@@ -294,7 +280,7 @@ export const PivotExcel = () => {
 
                 </div>
                 <div className="flex-1">
-                    <h2 className="text-xl font-bold mb-4">Subir Excel con la Lista de alumnos</h2>
+                    <h2 className="text-xl text-center font-bold mb-4">Subir Excel con la Lista de alumnos</h2>
                     <div
                         className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer ${dragOver ? "bg-blue-100 border-blue-400" : "border-gray-400"}`}
                         onDragOver={(e) => {
@@ -317,7 +303,7 @@ export const PivotExcel = () => {
                         />
                     </div>
                     {archivoAlumnos && <p className="mt-2 text-green-600">Archivo seleccionado: {archivoAlumnos.name}</p>}
-                    <p className="mt-2 text-gray-600">Formato esperado:</p>
+                    <p className="mt-2 text-gray-600 text-center">Formato esperado:</p>
                     <table className="m-auto mt-1 border-collapse border border-gray-400">
                         <thead>
                             <tr>
@@ -349,91 +335,15 @@ export const PivotExcel = () => {
 
             <section className="mt-8 flex flex-col items-center gap-2">
                 <DropDown title="Alumnos Ausentes">
-                    {
-                        tablaAusentes.length > 0 && (
-                            <table className="m-auto mt-1 border-collapse border border-gray-400">
-                                <thead>
-                                    <tr>
-                                        {dias.map((dia) => (
-                                            <th key={dia} className="border border-gray-400 px-10 py-1">
-                                                {dia}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {tablaAusentes.map((fila, idx) => (
-                                        <tr key={idx}>
-                                            {dias.map((dia) => (
-                                                <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {fila[dia]}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-
-                        )
-                    }
+                    {tablaAusentes.length > 0 && <Table data={tablaAusentes} columns={dias} />}
                 </DropDown>
 
                 <DropDown title="Alumnos Presentes">
-                    {
-                        tablaPresentes.length > 0 && (
-                            <table className="m-auto mt-1 border-collapse border border-gray-400">
-                                <thead>
-                                    <tr>
-                                        {dias.map((dia) => (
-                                            <th key={dia} className="border border-gray-400 px-10 py-1">
-                                                {dia}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {tablaPresentes.map((fila, idx) => (
-                                        <tr key={idx}>
-                                            {dias.map((dia) => (
-                                                <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {fila[dia]}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )
-                    }
+                    {tablaPresentes.length > 0 && <Table data={tablaPresentes} columns={dias} />}
                 </DropDown>
 
                 <DropDown title="Legajos no encontrados en la lista de alumnos">
-                    {
-                        tablaAlumnosNoEncontrados.length > 0 && (
-                            <table className="m-auto mt-1 border-collapse border border-gray-400">
-                                <thead>
-                                    <tr>
-                                        {dias.map((dia) => (
-                                            <th key={dia} className="border border-gray-400 px-10 py-1">
-                                                {dia}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {tablaAlumnosNoEncontrados.map((fila, idx) => (
-                                        <tr key={idx}>
-                                            {dias.map((dia) => (
-                                                <td key={dia} className="border border-gray-400 px-2 py-1">
-                                                    {fila[dia]}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )
-                    }
+                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={tablaAlumnosNoEncontrados} columns={dias} />}
                 </DropDown>
             </section>
 
