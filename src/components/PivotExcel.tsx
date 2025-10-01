@@ -77,25 +77,25 @@ export const PivotExcel = () => {
             const alumnosData: FilaAlumno[] = alumnosDataRaw.map(normalizeKeys);
 
             if (!alumnosData[0]?.Legajo) {
-                alert(`El archivo ${alumnosFile.name} no contiene la columna de 'Legajo'.`);
+                toast.error(`El archivo '${alumnosFile.name}' no contiene la columna de 'Legajo'.`);
                 setArchivoAlumnos(null);
                 return;
             }
 
             if (!alumnosData[0]?.["Apellido y Nombre"]) {
-                alert(`El archivo ${alumnosFile.name} no contiene la columna de 'Apellido y Nombre'.`);
+                toast.error(`El archivo '${alumnosFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
                 setArchivoAlumnos(null);
                 return;
             }
 
             const listaLegajosAlumno = alumnosData.map((a) => a.Legajo);
             if (listaLegajosAlumno.length === 0) {
-                alert("La lista de alumnos está vacía.");
+                toast.error("La lista de alumnos está vacía.");
                 return;
             }
 
             if (listaLegajosAlumno.length !== new Set(listaLegajosAlumno).size) {
-                alert("La lista de alumnos contiene legajos duplicados.");
+                toast.error("La lista de alumnos contiene legajos duplicados.");
                 return;
             }
 
@@ -111,17 +111,17 @@ export const PivotExcel = () => {
                 const asistenciasData: FilaAsistencia[] = asistenciasDataRaw.map(normalizeKeys);
 
                 if (!asistenciasData[0]?.Legajo) {
-                    alert(`El archivo ${asistenciasFile.name} no contiene la columna de 'Legajo'.`);
+                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Legajo'.`);
                     setArchivoAsistencia(null);
                     return;
                 }
                 if (!asistenciasData[0]?.["Marca temporal"]) {
-                    alert(`El archivo ${asistenciasFile.name} no contiene la columna de 'Marca temporal'.`);
+                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Marca temporal'.`);
                     setArchivoAsistencia(null);
                     return;
                 }
                 if (!asistenciasData[0]?.["Apellido y Nombre"]) {
-                    alert(`El archivo ${asistenciasFile.name} no contiene la columna de 'Apellido y Nombre'.`);
+                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
                     setArchivoAsistencia(null);
                     return;
                 }
@@ -213,7 +213,7 @@ export const PivotExcel = () => {
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>) => {
         if (e.target.files && e.target.files.length > 0) {
             if (!isExcelFile(e.target.files[0])) {
-                alert("Por favor, subí un archivo Excel válido (.xlsx o .xls).");
+                toast.error("Por favor, subí un archivo Excel válido (.xlsx o .xls).");
                 return;
             }
             console.log("Subido archivo")
@@ -227,7 +227,7 @@ export const PivotExcel = () => {
         setDragOver(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             if (!isExcelFile(e.dataTransfer.files[0])) {
-                alert("Por favor, subí un archivo Excel válido (.xlsx o .xls).");
+                toast.error("Por favor, subí un archivo Excel válido (.xlsx o .xls).");
                 return;
             }
             console.log("Archivo soltado:")
