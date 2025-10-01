@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { DropDown } from "./DropDown";
 import { toast } from "react-toastify";
@@ -182,9 +182,9 @@ export const PivotExcel = () => {
                 }
 
                 setDias(diasUnicos);
-                setTablaPresentes(presentesTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
-                setTablaAlumnosNoEncontrados(noEncontradosTabla.filter(fila => Object.values(fila).some(val => val !== undefined)));
-                setTablaAusentes(ausentesTabla.filter(fila => Object.values(fila).some(val => val !== "")));
+                setTablaPresentes(compactTableRows(presentesTabla));
+                setTablaAlumnosNoEncontrados(compactTableRows(noEncontradosTabla));
+                setTablaAusentes(compactTableRows(ausentesTabla));
 
                 toast.success("Reporte generado correctamente");
             };
@@ -362,11 +362,11 @@ export const PivotExcel = () => {
                 </DropDown>
 
                 <DropDown title="Alumnos Presentes">
-                    {tablaPresentes.length > 0 && <Table data={compactTableRows(tablaPresentes)} columns={dias} />}
+                    {tablaPresentes.length > 0 && <Table data={tablaPresentes} columns={dias} />}
                 </DropDown>
 
                 <DropDown title="Legajos no encontrados en la lista de alumnos">
-                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={compactTableRows(tablaAlumnosNoEncontrados)} columns={dias} />}
+                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={tablaAlumnosNoEncontrados} columns={dias} />}
                 </DropDown>
             </section>
 
