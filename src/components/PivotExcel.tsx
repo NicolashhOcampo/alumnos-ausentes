@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { DropDown } from "./DropDown";
 import { toast } from "react-toastify";
@@ -37,6 +37,29 @@ export const PivotExcel = () => {
         });
         return normalizedRow;
     };
+
+    const compactTableRows = (table: FilaTabla[]): FilaTabla[] => {
+        const newTable: FilaTabla[] = [];
+        table.forEach((row) => {
+            const entries = Object.entries(row)
+            const newRow: FilaTabla = {};
+            entries.forEach(([key, value]) => {
+                const emptyRow = newTable.find((r) => r[key] === undefined || r[key] === "");
+
+                if (emptyRow) {
+                    emptyRow[key] = value;
+                }
+                else {
+                    newRow[key] = value;
+                }
+            })
+            if (Object.values(newRow).some(val => val !== undefined && val !== "")) {
+                newTable.push(newRow);
+            }
+
+        })
+        return newTable;
+    }
 
     const procesarArchivos = (asistenciasFile: File, alumnosFile: File) => {
         console.log("Procesando archivos...");
@@ -339,11 +362,11 @@ export const PivotExcel = () => {
                 </DropDown>
 
                 <DropDown title="Alumnos Presentes">
-                    {tablaPresentes.length > 0 && <Table data={tablaPresentes} columns={dias} />}
+                    {tablaPresentes.length > 0 && <Table data={compactTableRows(tablaPresentes)} columns={dias} />}
                 </DropDown>
 
                 <DropDown title="Legajos no encontrados en la lista de alumnos">
-                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={tablaAlumnosNoEncontrados} columns={dias} />}
+                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={compactTableRows(tablaAlumnosNoEncontrados)} columns={dias} />}
                 </DropDown>
             </section>
 
