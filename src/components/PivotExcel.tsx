@@ -25,10 +25,10 @@ export const PivotExcel = () => {
             if (cleanKey === "legajo") {
                 normalizedRow["Legajo"] = row[key];
             } else if (cleanKey === "apellido y nombre") {
-                normalizedRow["Apellido y Nombre"] = row[key];
+                normalizedRow["Apellido y Nombre"] = String(row[key]).trim();
             } else if (cleanKey === "apellido" || cleanKey === "nombre y apellido") {
                 // opcional: más tolerancia
-                normalizedRow["Apellido y Nombre"] = row[key];
+                normalizedRow["Apellido y Nombre"] = String(row[key]).trim();
             } else if (cleanKey === "marca temporal") {
                 normalizedRow["Marca temporal"] = row[key];
             } else {
@@ -47,10 +47,10 @@ export const PivotExcel = () => {
                 const emptyRow = newTable.find((r) => r[key] === undefined || r[key] === "");
 
                 if (emptyRow) {
-                    emptyRow[key] = value;
+                    emptyRow[key] = value || "";
                 }
                 else {
-                    newRow[key] = value;
+                    newRow[key] = value || "";
                 }
             })
             if (Object.values(newRow).some(val => val !== undefined && val !== "")) {
@@ -149,15 +149,16 @@ export const PivotExcel = () => {
                 const maxAusentes = listaLegajosAlumno.length;
 
                 for (let i = 0; i < maxPresentes; i++) {
-                    const filaPresentes: FilaTabla = {};
-                    const filaNoEncontrados: FilaTabla = {};
+                    const filaPresentes: FilaTabla = Object.fromEntries(diasUnicos.map(d => [d, ""]));
+                    const filaNoEncontrados: FilaTabla = Object.fromEntries(diasUnicos.map(d => [d, ""]));
                     diasUnicos.forEach((dia) => {
                         const presentes = asistenciasData
                             .filter((row) => row["Dia"] === dia)
                             .map((r) => r.Legajo);
                         const alumno = alumnosData.find((a) => a.Legajo === presentes[i]);
                         if (alumno) {
-                            filaPresentes[dia] = alumno["Apellido y Nombre"] || String(presentes[i]);
+                            filaPresentes[dia] = alumno["Apellido y Nombre"];
+                            filaNoEncontrados[dia] = "";
                         } else {
                             const alumnoAsistencia = asistenciasData.find((a) => a.Legajo === presentes[i]);
                             if (alumnoAsistencia) {
@@ -193,6 +194,43 @@ export const PivotExcel = () => {
         };
 
         readerAlumnos.readAsArrayBuffer(alumnosFile);
+    };
+
+    const handleDownloadExcel = () => {
+        if (dias.length === 0) {
+            toast.error("No hay datos para descargar");
+            return;
+        }
+
+        const workbook = XLSX.utils.book_new();
+
+        // Crear hoja de ausentes
+        if (tablaAusentes.length > 0) {
+            const wsAusentes = XLSX.utils.json_to_sheet(tablaAusentes);
+            XLSX.utils.book_append_sheet(workbook, wsAusentes, "Ausentes");
+
+            wsAusentes["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaAusentes.map(row => row[dia]?.length || 0)) }));
+        }
+
+        // Crear hoja de presentes
+        if (tablaPresentes.length > 0) {
+            const wsPresentes = XLSX.utils.json_to_sheet(tablaPresentes);
+            XLSX.utils.book_append_sheet(workbook, wsPresentes, "Presentes");
+
+            wsPresentes["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaPresentes.map(row => row[dia]?.length || 0)) }));
+        }
+
+        // Crear hoja de no encontrados
+        if (tablaAlumnosNoEncontrados.length > 0) {
+            const wsNoEncontrados = XLSX.utils.json_to_sheet(tablaAlumnosNoEncontrados);
+            XLSX.utils.book_append_sheet(workbook, wsNoEncontrados, "No Encontrados");
+
+            wsNoEncontrados["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaAlumnosNoEncontrados.map(row => row[dia]?.length || 0)) }));
+        }
+
+        // Descargar el archivo
+        XLSX.writeFile(workbook, `Reporte_Asistencias_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.xlsx`);
+        toast.success("Archivo descargado correctamente");
     };
 
     const isExcelFile = (file: File) => {
@@ -354,6 +392,7 @@ export const PivotExcel = () => {
 
             <div className="flex justify-center mt-4 gap-2">
                 <button onClick={handleGenerateReport} className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={!archivoAsistencia || !archivoAlumnos}>Generar Reporte</button>
+                <button onClick={handleDownloadExcel} className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={dias.length === 0}>Descargar Excel</button>
             </div>
 
             <section className="mt-8 flex flex-col items-center gap-2">
