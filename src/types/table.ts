@@ -1,3 +1,3 @@
-export interface FilaTabla {
+export interface TableRow {
     [key: string]: string;
 }

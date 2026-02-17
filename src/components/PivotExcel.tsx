@@ -2,19 +2,21 @@ import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { DropDown } from "./DropDown";
 import { toast } from "react-toastify";
-import type { FilaTabla } from "../types/table";
+import type { TableRow } from "../types/table";
 import type { FilaAlumno, FilaAsistencia } from "../types/excelRows";
 import { Table } from "./Table";
 
 export const PivotExcel = () => {
-    const inputAsistenciaRef = useRef<HTMLInputElement | null>(null);
-    const inputAlumnosRef = useRef<HTMLInputElement | null>(null);
-    const [archivoAsistencia, setArchivoAsistencia] = useState<File | null>(null);
-    const [archivoAlumnos, setArchivoAlumnos] = useState<File | null>(null);
-    const [tablaPresentes, setTablaPresentes] = useState<FilaTabla[]>([]);
-    const [tablaAusentes, setTablaAusentes] = useState<FilaTabla[]>([]);
-    const [tablaAlumnosNoEncontrados, setTablaAlumnosNoEncontrados] = useState<FilaTabla[]>([]);
-    const [dias, setDias] = useState<string[]>([]);
+    const attendanceInputRef = useRef<HTMLInputElement | null>(null);
+    const studentsInputRef = useRef<HTMLInputElement | null>(null);
+
+    const [attendanceFile, setAttendanceFile] = useState<File | null>(null);
+    const [studentsFile, setStudentsFile] = useState<File | null>(null);
+    const [presentStudentsTable, setPresentStudentsTable] = useState<TableRow[]>([]);
+    const [absentStudentsTable, setAbsentStudentsTable] = useState<TableRow[]>([]);
+    const [notFoundStudentsTable, setNotFoundStudentsTable] = useState<TableRow[]>([]);
+    const [days, setDays] = useState<string[]>([]);
+    const [filterDays, setFilterDays] = useState<string[]>([]);
     const [dragOver, setDragOver] = useState(false);
 
     // Normalizar columnas
@@ -26,9 +28,6 @@ export const PivotExcel = () => {
                 normalizedRow["Legajo"] = row[key];
             } else if (cleanKey === "apellido y nombre") {
                 normalizedRow["Apellido y Nombre"] = String(row[key]).trim();
-            } else if (cleanKey === "apellido" || cleanKey === "nombre y apellido") {
-                // opcional: más tolerancia
-                normalizedRow["Apellido y Nombre"] = String(row[key]).trim();
             } else if (cleanKey === "marca temporal") {
                 normalizedRow["Marca temporal"] = row[key];
             } else {
@@ -38,11 +37,11 @@ export const PivotExcel = () => {
         return normalizedRow;
     };
 
-    const compactTableRows = (table: FilaTabla[]): FilaTabla[] => {
-        const newTable: FilaTabla[] = [];
+    const compactTableRows = (table: TableRow[]): TableRow[] => {
+        const newTable: TableRow[] = [];
         table.forEach((row) => {
             const entries = Object.entries(row)
-            const newRow: FilaTabla = {};
+            const newRow: TableRow = {};
             entries.forEach(([key, value]) => {
                 const emptyRow = newTable.find((r) => r[key] === undefined || r[key] === "");
 
@@ -61,143 +60,145 @@ export const PivotExcel = () => {
         return newTable;
     }
 
-    const procesarArchivos = (asistenciasFile: File, alumnosFile: File) => {
+    const processFiles = (attendanceFile: File, studentsFile: File) => {
         console.log("Procesando archivos...");
-        const readerAsistencias = new FileReader();
-        const readerAlumnos = new FileReader();
+        const readerAttendance = new FileReader();
+        const readerStudents = new FileReader();
 
-        readerAlumnos.onload = (evt) => {
+        readerStudents.onload = (evt) => {
             if (!evt.target?.result || typeof evt.target.result === "string") return;
             const data = new Uint8Array(evt.target.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: "array" });
 
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            const alumnosDataRaw = XLSX.utils.sheet_to_json(sheet);
-            const alumnosData: FilaAlumno[] = alumnosDataRaw.map(normalizeKeys);
+            const studentsDataRaw = XLSX.utils.sheet_to_json(sheet);
+            const studentsData: FilaAlumno[] = studentsDataRaw.map(normalizeKeys);
 
-            if (!alumnosData[0]?.Legajo) {
-                toast.error(`El archivo '${alumnosFile.name}' no contiene la columna de 'Legajo'.`);
-                setArchivoAlumnos(null);
+            if (!studentsData[0]?.Legajo) {
+                toast.error(`El archivo '${studentsFile.name}' no contiene la columna de 'Legajo'.`);
+                setStudentsFile(null);
                 return;
             }
 
-            if (!alumnosData[0]?.["Apellido y Nombre"]) {
-                toast.error(`El archivo '${alumnosFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
-                setArchivoAlumnos(null);
+            if (!studentsData[0]?.["Apellido y Nombre"]) {
+                toast.error(`El archivo '${studentsFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
+                setStudentsFile(null);
                 return;
             }
 
-            const listaLegajosAlumno = alumnosData.map((a) => a.Legajo);
-            if (listaLegajosAlumno.length === 0) {
+            // Id representa al legajo
+            const studentIds: number[] = studentsData.map((a) => a.Legajo);
+            if (studentIds.length === 0) {
                 toast.error("La lista de alumnos está vacía.");
                 return;
             }
 
-            if (listaLegajosAlumno.length !== new Set(listaLegajosAlumno).size) {
+            if (studentIds.length !== new Set(studentIds).size) {
                 toast.error("La lista de alumnos contiene legajos duplicados.");
                 return;
             }
 
             // Procesar asistencias
-            readerAsistencias.onload = (evt2) => {
+            readerAttendance.onload = (evt2) => {
                 if (!evt2.target?.result || typeof evt2.target.result === "string") return;
                 const data2 = new Uint8Array(evt2.target.result as ArrayBuffer);
                 const workbook2 = XLSX.read(data2, { type: "array" });
 
                 const sheetName2 = workbook2.SheetNames[0];
                 const sheet2 = workbook2.Sheets[sheetName2];
-                const asistenciasDataRaw = XLSX.utils.sheet_to_json(sheet2);
-                const asistenciasData: FilaAsistencia[] = asistenciasDataRaw.map(normalizeKeys);
+                const attendanceDataRaw = XLSX.utils.sheet_to_json(sheet2);
+                const attendanceData: FilaAsistencia[] = attendanceDataRaw.map(normalizeKeys);
 
-                if (!asistenciasData[0]?.Legajo) {
-                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Legajo'.`);
-                    setArchivoAsistencia(null);
+                if (!attendanceData[0]?.Legajo) {
+                    toast.error(`El archivo '${attendanceFile.name}' no contiene la columna de 'Legajo'.`);
+                    setAttendanceFile(null);
                     return;
                 }
-                if (!asistenciasData[0]?.["Marca temporal"]) {
-                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Marca temporal'.`);
-                    setArchivoAsistencia(null);
+                if (!attendanceData[0]?.["Marca temporal"]) {
+                    toast.error(`El archivo '${attendanceFile.name}' no contiene la columna de 'Marca temporal'.`);
+                    setAttendanceFile(null);
                     return;
                 }
-                if (!asistenciasData[0]?.["Apellido y Nombre"]) {
-                    toast.error(`El archivo '${asistenciasFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
-                    setArchivoAsistencia(null);
+                if (!attendanceData[0]?.["Apellido y Nombre"]) {
+                    toast.error(`El archivo '${attendanceFile.name}' no contiene la columna de 'Apellido y Nombre'.`);
+                    setAttendanceFile(null);
                     return;
                 }
 
                 // Conversión de fechas
-                const diasConvertidos = asistenciasData.map((row) => {
-                    const fecha = XLSX.SSF.parse_date_code(row["Marca temporal"]);
-                    return `${String(fecha.d).padStart(2, "0")}/${String(fecha.m).padStart(2, "0")}/${fecha.y}`;
+                const formattedAttendanceDates = attendanceData.map((row) => {
+                    const date = XLSX.SSF.parse_date_code(row["Marca temporal"]);
+                    return `${String(date.d).padStart(2, "0")}/${String(date.m).padStart(2, "0")}/${date.y}`;
                 });
-                asistenciasData.forEach((row, i) => (row["Dia"] = diasConvertidos[i]));
+                attendanceData.forEach((row, i) => (row["Dia"] = formattedAttendanceDates[i]));
 
-                const diasUnicos = [...new Set(diasConvertidos)];
+                const uniqueDays = [...new Set(formattedAttendanceDates)];
 
                 // Armar presentes y ausentes
-                const presentesTabla: FilaTabla[] = [];
-                const ausentesTabla: FilaTabla[] = [];
-                const noEncontradosTabla: FilaTabla[] = [];
+                const presentStudentsTable: TableRow[] = [];
+                const absentStudentsTable: TableRow[] = [];
+                const notFoundStudentsTable: TableRow[] = [];
 
-                const maxPresentes = Math.max(
-                    ...diasUnicos.map(
-                        (dia) => asistenciasData.filter((row) => row["Dia"] === dia).length
+                const maxPresentCount = Math.max(
+                    ...uniqueDays.map(
+                        (d) => attendanceData.filter((row) => row["Dia"] === d).length
                     )
                 );
 
-                const maxAusentes = listaLegajosAlumno.length;
+                const maxAbsentCount = studentIds.length;
 
-                for (let i = 0; i < maxPresentes; i++) {
-                    const filaPresentes: FilaTabla = Object.fromEntries(diasUnicos.map(d => [d, ""]));
-                    const filaNoEncontrados: FilaTabla = Object.fromEntries(diasUnicos.map(d => [d, ""]));
-                    diasUnicos.forEach((dia) => {
-                        const presentes = asistenciasData
-                            .filter((row) => row["Dia"] === dia)
+                for (let i = 0; i < maxPresentCount; i++) {
+                    const presentStudentsRow: TableRow = Object.fromEntries(uniqueDays.map(d => [d, ""]));
+                    const notFoundStudentsRow: TableRow = Object.fromEntries(uniqueDays.map(d => [d, ""]));
+                    uniqueDays.forEach((d) => {
+                        const presentes = attendanceData
+                            .filter((row) => row["Dia"] === d)
                             .map((r) => r.Legajo);
-                        const alumno = alumnosData.find((a) => a.Legajo === presentes[i]);
-                        if (alumno) {
-                            filaPresentes[dia] = alumno["Apellido y Nombre"];
-                            filaNoEncontrados[dia] = "";
+                        const student = studentsData.find((a) => a.Legajo === presentes[i]);
+                        if (student) {
+                            presentStudentsRow[d] = student["Apellido y Nombre"];
+                            notFoundStudentsRow[d] = "";
                         } else {
-                            const alumnoAsistencia = asistenciasData.find((a) => a.Legajo === presentes[i]);
+                            const alumnoAsistencia = attendanceData.find((a) => a.Legajo === presentes[i]);
                             if (alumnoAsistencia) {
-                                filaNoEncontrados[dia] = `Legajo: ${presentes[i]}, Nombre: ${alumnoAsistencia["Apellido y Nombre"]}`;
+                                notFoundStudentsRow[d] = `Legajo: ${presentes[i]}, Nombre: ${alumnoAsistencia["Apellido y Nombre"]}`;
                             }
                         }
                     });
-                    presentesTabla.push(filaPresentes);
-                    noEncontradosTabla.push(filaNoEncontrados);
+                    presentStudentsTable.push(presentStudentsRow);
+                    notFoundStudentsTable.push(notFoundStudentsRow);
                 }
 
-                for (let i = 0; i < maxAusentes; i++) {
-                    const fila: FilaTabla = {};
-                    diasUnicos.forEach((dia) => {
-                        const presentes = asistenciasData
-                            .filter((row) => row.Dia === dia)
+                for (let i = 0; i < maxAbsentCount; i++) {
+                    const absentStudentsRow: TableRow = {};
+                    uniqueDays.forEach((d) => {
+                        const presentes = attendanceData
+                            .filter((row) => row.Dia === d)
                             .map((r) => r.Legajo);
-                        const ausentes = listaLegajosAlumno.filter((alumno) => !presentes.includes(alumno));
-                        fila[dia] = alumnosData.find((a) => a.Legajo === ausentes[i])?.["Apellido y Nombre"] || "";
+                        const ausentes = studentIds.filter((student) => !presentes.includes(student));
+                        absentStudentsRow[d] = studentsData.find((a) => a.Legajo === ausentes[i])?.["Apellido y Nombre"] || "";
                     });
-                    ausentesTabla.push(fila);
+                    absentStudentsTable.push(absentStudentsRow);
                 }
 
-                setDias(diasUnicos);
-                setTablaPresentes(compactTableRows(presentesTabla));
-                setTablaAlumnosNoEncontrados(compactTableRows(noEncontradosTabla));
-                setTablaAusentes(compactTableRows(ausentesTabla));
+                setDays(uniqueDays);
+                setFilterDays(uniqueDays);
+                setPresentStudentsTable(compactTableRows(presentStudentsTable));
+                setNotFoundStudentsTable(compactTableRows(notFoundStudentsTable));
+                setAbsentStudentsTable(compactTableRows(absentStudentsTable));
 
                 toast.success("Reporte generado correctamente");
             };
 
-            readerAsistencias.readAsArrayBuffer(asistenciasFile);
+            readerAttendance.readAsArrayBuffer(attendanceFile);
         };
 
-        readerAlumnos.readAsArrayBuffer(alumnosFile);
+        readerStudents.readAsArrayBuffer(studentsFile);
     };
 
     const handleDownloadExcel = () => {
-        if (dias.length === 0) {
+        if (days.length === 0) {
             toast.error("No hay datos para descargar");
             return;
         }
@@ -205,27 +206,27 @@ export const PivotExcel = () => {
         const workbook = XLSX.utils.book_new();
 
         // Crear hoja de ausentes
-        if (tablaAusentes.length > 0) {
-            const wsAusentes = XLSX.utils.json_to_sheet(tablaAusentes);
-            XLSX.utils.book_append_sheet(workbook, wsAusentes, "Ausentes");
+        if (absentStudentsTable.length > 0) {
+            const wsAbsentStudents = XLSX.utils.json_to_sheet(absentStudentsTable);
+            XLSX.utils.book_append_sheet(workbook, wsAbsentStudents, "Ausentes");
 
-            wsAusentes["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaAusentes.map(row => row[dia]?.length || 0)) }));
+            wsAbsentStudents["!cols"] = days.map((d) => ({ wch: Math.max(10, ...absentStudentsTable.map(row => row[d]?.length || 0)) }));
         }
 
         // Crear hoja de presentes
-        if (tablaPresentes.length > 0) {
-            const wsPresentes = XLSX.utils.json_to_sheet(tablaPresentes);
-            XLSX.utils.book_append_sheet(workbook, wsPresentes, "Presentes");
+        if (presentStudentsTable.length > 0) {
+            const wsPresentStudents = XLSX.utils.json_to_sheet(presentStudentsTable);
+            XLSX.utils.book_append_sheet(workbook, wsPresentStudents, "Presentes");
 
-            wsPresentes["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaPresentes.map(row => row[dia]?.length || 0)) }));
+            wsPresentStudents["!cols"] = days.map((d) => ({ wch: Math.max(10, ...presentStudentsTable.map(row => row[d]?.length || 0)) }));
         }
 
         // Crear hoja de no encontrados
-        if (tablaAlumnosNoEncontrados.length > 0) {
-            const wsNoEncontrados = XLSX.utils.json_to_sheet(tablaAlumnosNoEncontrados);
-            XLSX.utils.book_append_sheet(workbook, wsNoEncontrados, "No Encontrados");
+        if (notFoundStudentsTable.length > 0) {
+            const wsNotFoundStudents = XLSX.utils.json_to_sheet(notFoundStudentsTable);
+            XLSX.utils.book_append_sheet(workbook, wsNotFoundStudents, "No Encontrados");
 
-            wsNoEncontrados["!cols"] = dias.map((dia) => ({ wch: Math.max(10, ...tablaAlumnosNoEncontrados.map(row => row[dia]?.length || 0)) }));
+            wsNotFoundStudents["!cols"] = days.map((d) => ({ wch: Math.max(10, ...notFoundStudentsTable.map(row => row[d]?.length || 0)) }));
         }
 
         // Descargar el archivo
@@ -270,16 +271,22 @@ export const PivotExcel = () => {
             }
             console.log("Archivo soltado:")
             setFile(e.dataTransfer.files[0]);
-            inputAlumnosRef.current!.value = "";
-            inputAsistenciaRef.current!.value = "";
+            studentsInputRef.current!.value = "";
+            attendanceInputRef.current!.value = "";
             e.dataTransfer.clearData();
         }
     };
 
     const handleGenerateReport = () => {
-        if (archivoAsistencia && archivoAlumnos) {
-            procesarArchivos(archivoAsistencia, archivoAlumnos);
+        if (attendanceFile && studentsFile) {
+            processFiles(attendanceFile, studentsFile);
         }
+    }
+
+    const handleSubmitFilterDays = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        setFilterDays(formData.getAll("days") as string[]);
     }
 
     return (
@@ -294,21 +301,21 @@ export const PivotExcel = () => {
                             setDragOver(true);
                         }}
                         onDragLeave={() => setDragOver(false)}
-                        onDrop={(e) => handleDrop(e, setArchivoAsistencia)}
-                        onClick={() => inputAsistenciaRef.current?.click()}
+                        onDrop={(e) => handleDrop(e, setAttendanceFile)}
+                        onClick={() => attendanceInputRef.current?.click()}
                     >
                         {dragOver
                             ? "📂 Soltá el archivo aquí"
                             : "Arrastrá y soltá tu archivo Excel o hacé click para seleccionar"}
                         <input
-                            ref={inputAsistenciaRef}
+                            ref={attendanceInputRef}
                             type="file"
                             accept=".xlsx, .xls"
                             className="hidden"
-                            onChange={(e) => handleFileUpload(e, setArchivoAsistencia)}
+                            onChange={(e) => handleFileUpload(e, setAttendanceFile)}
                         />
                     </div>
-                    {archivoAsistencia && <p className="mt-2 text-green-600">Archivo seleccionado: {archivoAsistencia.name}</p>}
+                    {attendanceFile && <p className="mt-2 text-green-600">Archivo seleccionado: {attendanceFile.name}</p>}
                     <p className="mt-2 text-gray-600 text-center">Formato esperado:</p>
                     <table className="m-auto mt-1 border-collapse border border-gray-400">
                         <thead>
@@ -349,21 +356,21 @@ export const PivotExcel = () => {
                             setDragOver(true);
                         }}
                         onDragLeave={() => setDragOver(false)}
-                        onDrop={(e) => handleDrop(e, setArchivoAlumnos)}
-                        onClick={() => inputAlumnosRef.current?.click()}
+                        onDrop={(e) => handleDrop(e, setStudentsFile)}
+                        onClick={() => studentsInputRef.current?.click()}
                     >
                         {dragOver
                             ? "📂 Soltá el archivo aquí"
                             : "Arrastrá y soltá tu archivo Excel o hacé click para seleccionar"}
                         <input
-                            ref={inputAlumnosRef}
+                            ref={studentsInputRef}
                             type="file"
                             accept=".xlsx, .xls"
                             className="hidden"
-                            onChange={(e) => handleFileUpload(e, setArchivoAlumnos)}
+                            onChange={(e) => handleFileUpload(e, setStudentsFile)}
                         />
                     </div>
-                    {archivoAlumnos && <p className="mt-2 text-green-600">Archivo seleccionado: {archivoAlumnos.name}</p>}
+                    {studentsFile && <p className="mt-2 text-green-600">Archivo seleccionado: {studentsFile.name}</p>}
                     <p className="mt-2 text-gray-600 text-center">Formato esperado:</p>
                     <table className="m-auto mt-1 border-collapse border border-gray-400">
                         <thead>
@@ -391,21 +398,40 @@ export const PivotExcel = () => {
             </div>
 
             <div className="flex justify-center mt-4 gap-2">
-                <button onClick={handleGenerateReport} className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={!archivoAsistencia || !archivoAlumnos}>Generar Reporte</button>
-                <button onClick={handleDownloadExcel} className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={dias.length === 0}>Descargar Excel</button>
+                <button onClick={handleGenerateReport} className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={!attendanceFile || !studentsFile}>Generar Reporte</button>
+                <button onClick={handleDownloadExcel} className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={days.length === 0}>Descargar Excel</button>
             </div>
-
+            <div className="w-40">
+                <DropDown title="Filtro">
+                    <form onSubmit={handleSubmitFilterDays} className="flex flex-col items-center">
+                        {days.map((day) => (
+                            <div key={day}>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="days"
+                                        value={day}
+                                        defaultChecked
+                                    />
+                                    {day}
+                                </label>
+                            </div>
+                        ))}
+                        <button className="p-2 rounded-2xl bg-green-400 m-auto mt-2 cursor-pointer">Aplicar</button>
+                    </form>
+                </DropDown>
+            </div>
             <section className="mt-8 flex flex-col items-center gap-2">
                 <DropDown title="Alumnos Ausentes">
-                    {tablaAusentes.length > 0 && <Table data={tablaAusentes} columns={dias} />}
+                    {absentStudentsTable.length > 0 && <Table data={absentStudentsTable} columns={filterDays} />}
                 </DropDown>
 
                 <DropDown title="Alumnos Presentes">
-                    {tablaPresentes.length > 0 && <Table data={tablaPresentes} columns={dias} />}
+                    {presentStudentsTable.length > 0 && <Table data={presentStudentsTable} columns={filterDays} />}
                 </DropDown>
 
                 <DropDown title="Legajos no encontrados en la lista de alumnos">
-                    {tablaAlumnosNoEncontrados.length > 0 && <Table data={tablaAlumnosNoEncontrados} columns={dias} />}
+                    {notFoundStudentsTable.length > 0 && <Table data={notFoundStudentsTable} columns={filterDays} />}
                 </DropDown>
             </section>
 

@@ -1,6 +1,6 @@
-import type { FilaTabla } from "../types/table"
+import type { TableRow } from "../types/table"
 
-export const Table = ({ data, columns }: { data: FilaTabla[], columns: string[] }) => {
+export const Table = ({ data, columns }: { data: TableRow[], columns: string[] }) => {
     return (
         <table className="m-auto mt-1 border-collapse border border-gray-400">
             <thead>
@@ -13,11 +13,11 @@ export const Table = ({ data, columns }: { data: FilaTabla[], columns: string[] 
                 </tr>
             </thead>
             <tbody>
-                {data.map((fila, idx) => (
+                {data.map((row, idx) => (
                     <tr key={idx}>
                         {columns.map((col) => (
                             <td key={col} className="border border-gray-400 px-2 py-1">
-                                {fila[col]}
+                                {row[col]}
                             </td>
                         ))}
                     </tr>
