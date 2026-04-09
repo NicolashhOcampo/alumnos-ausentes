@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import type { TableRow } from "../types/table";
 import type { FilaAlumno, FilaAsistencia } from "../types/excelRows";
 import { Table } from "./Table";
+import { Tabs } from "./Tabs";
 
 export const PivotExcel = () => {
     const attendanceInputRef = useRef<HTMLInputElement | null>(null);
@@ -290,8 +291,8 @@ export const PivotExcel = () => {
     }
 
     return (
-        <div className="w-full max-w-7xl m-auto p-4">
-            <div className="flex justify-center md:gap-2 md:flex-row flex-col gap-8">
+        <div className="w-full max-w-7xl m-auto">
+            <div className="flex justify-center md:gap-2 md:flex-row flex-col gap-8 p-4">
                 <div className="flex-1">
                     <h2 className="text-xl text-center font-bold mb-4">Subir Excel de Asistencias</h2>
                     <div
@@ -401,38 +402,35 @@ export const PivotExcel = () => {
                 <button onClick={handleGenerateReport} className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={!attendanceFile || !studentsFile}>Generar Reporte</button>
                 <button onClick={handleDownloadExcel} className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer disabled:bg-gray-400 disabled:cursor-default" disabled={days.length === 0}>Descargar Excel</button>
             </div>
-            <div className="w-40">
-                <DropDown title="Filtro">
-                    <form onSubmit={handleSubmitFilterDays} className="flex flex-col items-center">
-                        {days.map((day) => (
-                            <div key={day}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="days"
-                                        value={day}
-                                        defaultChecked
-                                    />
-                                    {day}
-                                </label>
-                            </div>
-                        ))}
-                        <button className="p-2 rounded-2xl bg-green-400 m-auto mt-2 cursor-pointer">Aplicar</button>
-                    </form>
-                </DropDown>
-            </div>
-            <section className="mt-8 flex flex-col items-center gap-2">
-                <DropDown title="Alumnos Ausentes">
-                    {absentStudentsTable.length > 0 && <Table data={absentStudentsTable} columns={filterDays} />}
-                </DropDown>
 
-                <DropDown title="Alumnos Presentes">
-                    {presentStudentsTable.length > 0 && <Table data={presentStudentsTable} columns={filterDays} />}
-                </DropDown>
-
-                <DropDown title="Legajos no encontrados en la lista de alumnos">
-                    {notFoundStudentsTable.length > 0 && <Table data={notFoundStudentsTable} columns={filterDays} />}
-                </DropDown>
+            <section className="mt-8 grid grid-cols-[10rem_1fr] grid-rows-[5rem_1fr] gap-2 h-dvh w-full p-2">
+                <div className="flex gap-2 items-center md:flex-col col-span-2 md:col-span-1 md:row-span-2">
+                    <h3 className="text-center font-bold text-lg h-10 flex items-center justify-center">Filtros</h3>
+                    <hr className="mb-4 w-0 md:w-full" />
+                    <div className="w-40 md:w-full ">
+                        <DropDown title="Dias">
+                            <form onSubmit={handleSubmitFilterDays} className="flex flex-col items-center max-h-40 overflow-auto">
+                                {days.map((day) => (
+                                    <div key={day}>
+                                        <label className="flex justify-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                name="days"
+                                                value={day}
+                                                defaultChecked
+                                            />
+                                            <p>{day}</p>
+                                        </label>
+                                    </div>
+                                ))}
+                                <button className="p-2 rounded-2xl bg-green-400 m-auto mt-2 cursor-pointer">Aplicar</button>
+                            </form>
+                        </DropDown>
+                    </div>
+                </div>
+                <div className="flex flex-col p-2 min-h-0 min-w-0 col-span-2 md:col-span-1 md:row-span-2">
+                    <Tabs tabsName={["Alumnos Ausentes", "Alumnos Presentes", "Alumnos No Encontrados"]} content={[<Table data={absentStudentsTable} columns={filterDays} />, <Table data={presentStudentsTable} columns={filterDays} />, <Table data={notFoundStudentsTable} columns={filterDays} />]} />
+                </div>
             </section>
 
         </div >
